@@ -1,0 +1,177 @@
+//R5-D4 RandomEyes by Tim Hebel - 19 Aug 2023
+//Groups the sets of eyes together so sets of eyes (such as the MainEyes) can act together
+//This will evolve into a "mood-based" syste where the mood of the droid will determine the lighting and the mood will be set 
+//from incoming commands from the operator...using the Human Cyborg Relations sound module.
+
+#include <Arduino.h>
+#include "NeoPatterns.hpp"
+
+
+//Forward Declarations of functions
+void PatternHandler(NeoPatterns *aLedsPtr);
+void MainEyeHandler(NeoPatterns *aLedsPtr);
+int moodSelect();
+
+//Define possible moods
+#define HAPPY         1
+#define SAD           2
+#define ANGRY         3
+#define SCARED        4
+#define FREAKED_OUT   5
+#define BAD_MOTIVATOR 6
+
+// Which pin on the Arduino is connected to the NeoPixels?
+#define PIN_NEOPIXEL_ALL        4
+
+//Define a placeholder for and set current mood to HAPPY
+int iMood = HAPPY;
+
+//Setup Handlers for each element of lights
+NeoPatterns allPixel = NeoPatterns(8, PIN_NEOPIXEL_ALL, NEO_GRB + NEO_KHZ800, &PatternHandler);
+NeoPatterns mouth = NeoPatterns(&allPixel, 0, 1, true, &PatternHandler);
+NeoPatterns nose = NeoPatterns(&allPixel, 1, 1, true, &PatternHandler);
+NeoPatterns lowerEyes = NeoPatterns(&allPixel, 2, 2, true, &PatternHandler);
+NeoPatterns mainEyes = NeoPatterns(&allPixel, 4, 3, true, &MainEyeHandler);
+NeoPatterns eybrowEye = NeoPatterns(&allPixel, 7, 1, true, &PatternHandler);
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+
+  mouth.begin();
+  nose.begin();
+  lowerEyes.begin();
+  mainEyes.begin();
+  eybrowEye.begin();
+
+  // mouth.PixelFlags |= PIXEL_FLAG_GEOMETRY_CIRCLE;
+  // nose.PixelFlags |= PIXEL_FLAG_GEOMETRY_CIRCLE;
+  // lowerEyes.PixelFlags |= PIXEL_FLAG_GEOMETRY_CIRCLE;
+  // mainEyes.PixelFlags |= PIXEL_FLAG_GEOMETRY_CIRCLE;
+  // eybrowEye.PixelFlags |= PIXEL_FLAG_GEOMETRY_CIRCLE;
+
+  delay(300); // to avoid partial patterns at power up
+
+  mouth.ColorWipe(COLOR32_PURPLE, 50);
+  nose.ColorWipe(COLOR32_RED, 50);
+  lowerEyes.ColorWipe(COLOR32_GREEN, 50);
+  mainEyes.ColorWipe(COLOR32_BLUE, 50);
+  eybrowEye.ColorWipe(COLOR32_RED, 50);
+
+//    bar24.ScannerExtended(COLOR32_BLUE, 5, 50, 1,
+//            FLAG_SCANNER_EXT_ROCKET | FLAG_SCANNER_EXT_VANISH_COMPLETE | FLAG_SCANNER_EXT_START_AT_BOTH_ENDS);
+
+
+  Serial.println("started");
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  mouth.update();
+  nose.update();
+  lowerEyes.update();
+  mainEyes.update();
+  eybrowEye.update();
+  //iMood = moodSelect();
+
+}
+
+void PatternHandler(NeoPatterns *aLedsPtr) {
+      static int8_t sState = 0;
+
+    switch (sState) {
+    case 0:
+        aLedsPtr->ColorWipe(COLOR32_RED_HALF, 50);
+        break;
+    case 1:
+        aLedsPtr->Flash(COLOR32_BLUE_HALF, 200, COLOR32_WHITE_HALF, 125,50,false);
+        break;
+    case 2:
+        aLedsPtr->Heartbeat(COLOR32_GREEN, 2, 0);
+        break;
+    case 3:
+        aLedsPtr->Flash(COLOR32_WHITE, 100, COLOR32_WHITE_QUARTER, 100,50,false);
+        break;
+    case 4:
+        aLedsPtr->RainbowCycle(50, DIRECTION_UP);
+        break;
+    case 5:
+        aLedsPtr->RainbowCycle(50, DIRECTION_DOWN);
+        break;
+    case 6:
+        //aLedsPtr->Delay(400);
+        aLedsPtr->Heartbeat(COLOR32_WHITE_HALF, 50, 0);
+        break;
+    case 7:
+        aLedsPtr->Stripes(COLOR32_GREEN, 2, COLOR32_CYAN_HALF,2,251, 48,DIRECTION_UP); // OK Fire(30, 260)is also OK
+        break;
+    case 8:
+        // switch to random
+        aLedsPtr->Flash(COLOR32_ORANGE_HALF, 150, COLOR32_YELLOW_QUARTER, 100,50,false);
+        sState = -1; // Start from beginning
+        break;
+    default:
+        Serial.println("ERROR");
+        break;
+    }
+
+    Serial.print("PatterHandler: Pin=");
+    Serial.print(aLedsPtr->getPin());
+    Serial.print(" Length=");
+    Serial.print(aLedsPtr->numPixels());
+    Serial.print(" ActivePattern=");
+    aLedsPtr->printPatternName(aLedsPtr->ActivePattern, &Serial);
+    Serial.print("|");
+    Serial.print(aLedsPtr->ActivePattern);
+    Serial.print(" State=");
+    Serial.println(sState);
+
+    sState++;
+}
+void MainEyeHandler(NeoPatterns *aLedsPtr) {
+  switch (moodSelect()) {
+    case   HAPPY:
+        aLedsPtr->RainbowCycle(15, DIRECTION_UP);
+        Serial.println(" Mood=Happy");
+        break;
+    case   SAD:
+        aLedsPtr->Heartbeat(COLOR32_BLUE_HALF, 150, 2,1);
+        Serial.println(" Mood=Sad");
+        break;    
+    case   ANGRY:
+        aLedsPtr->Flash(COLOR32_RED, 160, COLOR32_RED_QUARTER, 50,10,false);
+        Serial.println(" Mood=Angry");
+        break;  
+    case   SCARED:
+        aLedsPtr->ScannerExtended(COLOR32_PURPLE_HALF, 3, 300,10,0, DIRECTION_UP);
+        Serial.println(" Mood=Scared");
+        break;
+    default:
+        Serial.println("ERROR");
+        break;
+  }    
+}
+int moodSelect(){
+    static int _mood = 1;  
+    if(_mood >= 1 && _mood <=5){
+      _mood ++; //add one to the mood
+      return HAPPY;
+    }
+    if(_mood >= 6 && _mood <=10){
+      _mood ++; //add one to the mood
+      return SAD;
+    }
+    if(_mood >= 11 && _mood <=15){
+      _mood ++; //add one to the mood
+      return ANGRY;
+    }
+    if(_mood >= 16 && _mood <=20){
+      _mood ++; //add one to the mood
+      if(_mood > 20){
+        _mood = 1;
+        Serial.println("Mood reset to HAPPY");
+      }
+    return SCARED;
+    }
+}
